@@ -13,14 +13,20 @@ import java.util.concurrent.TimeUnit;
 
 public class EchoServer extends UnicastRemoteObject implements Echo {
     private List<String> messages = new ArrayList<>();
-
-    protected EchoServer() throws RemoteException {
+    private MqttService mqttService;
+    protected EchoServer(MqttService mqttService) throws RemoteException {
         super();
+        this.mqttService = mqttService;
+    }
+
+    public void addMessage(String message){
+        messages.add(message);
     }
 
     @Override
     public String echo(String message) throws RemoteException {
         messages.add(message);
+        mqttService.publish(message);
         return message;
     }
 
