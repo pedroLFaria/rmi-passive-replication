@@ -17,7 +17,9 @@ public class ServerApp {
     static String host = "//localhost";
     static String port = "8088";
     static String serviceName = "EchoServer";
-    static private MqttService mqttService;
+    static MqttService mqttService;
+    static ServerTypeEnum serverType;
+    static int cloneId = 0;
 
     public static void main(String[] args) {
         try {
@@ -70,25 +72,26 @@ public class ServerApp {
 
     }
 
-    private static void electeNewMaster() {
-        System.out.println("TODO: Eleger novo servidor Mestre");
+    private static void shouldBeNewMaster() {
+        
     }
 
     private static String bindName(EchoServer echoServer) throws MalformedURLException, RemoteException {
-        String serverName = "master";
-        String fullAddress = getFullAddress(serverName);
+        serverType = ServerTypeEnum.MASTER;
+        String fullAddress = getFullAddress();
         try {
             Naming.lookup(fullAddress);
         } catch (NotBoundException e) {
             Naming.rebind(fullAddress, echoServer);
             return fullAddress;
         }
-        return bindClone(echoServer, 0);
+        return bindClone(echoServer);
     }
 
-    private static String bindClone(EchoServer echoServer, int i) throws MalformedURLException, RemoteException {
-        String serverName = String.format("Clone/%d", i);
-        String fullAddress = getFullAddress(serverName);
+    private static String bindClone(EchoServer echoServer) throws MalformedURLException, RemoteException {
+        serverType = ServerTypeEnum.CLONE;
+        cloneId++;
+        String fullAddress = getFullAddress();
         try {
             Naming.lookup(fullAddress);
         } catch (NotBoundException e) {
@@ -97,12 +100,16 @@ public class ServerApp {
         }
         mqttService.subscribe();
         mqttService.setMqttCallBack(callback(echoServer));
-        return bindClone(echoServer, i + 1);
+        return bindClone(echoServer);
     }
 
-    private static String getFullAddress(String serverName){
-        return String.format("%s:%s/%s/%s", host, port, serviceName, serverName);
+    private static String getFullAddress(){
+        if(serverType.equals(ServerTypeEnum.MASTER)){
+            return String.format("%s:%s/%s/%s", host, port, serviceName, serverType);
+        }
+        return String.format("%s:%s/%s/%s/%d", host, port, serviceName, serverType, cloneId);            
     }
+
     private static MqttCallback callback(EchoServer echoServer){
         return new MqttCallback(){
 

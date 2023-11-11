@@ -9,47 +9,57 @@ public class MqttService {
     public static int qos = 2;
     public static String broker = "tcp://127.0.0.1:1883";
     public static String publisherId = "mqtt-publisher";
-    private final MqttClient mqttPublisher;
-
+    private MqttClient mqttPublisher;
+    private MqttConnectOptions connOpts;
+    
     public MqttService(){
         try {
             MemoryPersistence persistence = new MemoryPersistence();
             mqttPublisher = new MqttClient(broker, publisherId, persistence);
-            MqttConnectOptions connOpts = new MqttConnectOptions();
+            connOpts = new MqttConnectOptions();
             connOpts.setCleanSession(true);
             connOpts.setAutomaticReconnect(true);
             connOpts.setConnectionTimeout(10);
-            System.out.println("Connecting to broker: " + broker);
+            
             mqttPublisher.connect(connOpts);
-            System.out.println("Connected");
+            
         } catch (MqttException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void subscribe(){
+    public void connect() throws MqttSecurityException, MqttException{
+        System.out.println("Connecting to broker: " + broker);
+        mqttPublisher.connect(connOpts);
+        System.out.println("Connected");
+    }
+
+    public void disconnect() throws MqttException{
+        System.out.println("Disconnecting from broker: " + broker);
+        mqttPublisher.disconnect();
+        System.out.println("Disconnected");
+    }
+
+    public void subscribe() throws MqttException{
         subscribe(topic);
     }
 
-    public void subscribe(String topic){
-        try {
-            mqttPublisher.subscribe(topic);
-        } catch (MqttException e) {
-            throw new RuntimeException(e);
-        }
+    public void subscribe(String topic) throws MqttException{
+        System.out.println("Subscribing to topic: " + topic);
+        mqttPublisher.subscribe(topic);
+        System.out.println("Subscribed");
     }
-    public void publish(String message){
+
+    public void publish(String message) throws MqttPersistenceException, MqttException{        
         publish(topic, message);
     }
 
-    public void publish(String topic, String message){
-        try {
-            var mqttMessage = new MqttMessage(message.getBytes());
-            mqttMessage.setQos(qos);
-            mqttPublisher.publish(topic, mqttMessage);
-        } catch (MqttException e) {
-            throw new RuntimeException(e);
-        }
+    public void publish(String topic, String message) throws MqttPersistenceException, MqttException{
+        var mqttMessage = new MqttMessage(message.getBytes());
+        mqttMessage.setQos(qos);
+        System.out.println("Publishing message to topic: " + topic);
+        mqttPublisher.publish(topic, mqttMessage);
+        System.out.println("Published");
     }
 
     public void setMqttCallBack(MqttCallback callBack){
