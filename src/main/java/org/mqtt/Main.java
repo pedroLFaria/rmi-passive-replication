@@ -11,21 +11,6 @@ import java.rmi.RemoteException;
 
 public class Main {
     public static void main(String[] args) {
-        Echo remoteEcho;
-        String dados;
-
-        try{
-            remoteEcho = (Echo) Naming.lookup("//EchoServer/master");
-            remoteEcho.echo("Teste 1");
-            remoteEcho.echo("Teste 2");
-            remoteEcho.getListOfMsg();
-        }
-        catch(RemoteException re){
-            JOptionPane.showMessageDialog(null,"Erro Remoto: "+re.toString(),"Erro Remoto",JOptionPane.WARNING_MESSAGE);
-        }
-        catch(Exception e){
-            JOptionPane.showMessageDialog(null,"Erro Local: "+e.toString(),"Erro Local",JOptionPane.WARNING_MESSAGE);
-        }
         connectToMqtt();
     }
 
@@ -39,6 +24,22 @@ public class Main {
 
         try {
             var mqttPublisher = new MqttClient(broker, publisherId, persistence);
+            mqttPublisher.setCallback(new MqttCallback() {
+                @Override
+                public void connectionLost(Throwable cause) {
+
+                }
+
+                @Override
+                public void messageArrived(String topic, MqttMessage message) throws Exception {
+                    System.out.printf("Messagem do topico %s chegou: %s", topic, message);
+                }
+
+                @Override
+                public void deliveryComplete(IMqttDeliveryToken token) {
+
+                }
+            });
             var connOpts = new MqttConnectOptions();
 
             connOpts.setCleanSession(true);
@@ -54,6 +55,8 @@ public class Main {
             message.setQos(qos);
             mqttPublisher.publish(topic, message);
             mqttPublisher.subscribe(topic);
+
+            mqttPublisher.publish(topic, message);
             System.out.println("Message published");
 
             mqttPublisher.disconnect();

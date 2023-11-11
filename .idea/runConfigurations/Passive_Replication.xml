@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Passive Replication" type="CompoundRunConfigurationType">
+    <toRun name="ServerApp" type="Application" />
+    <toRun name="ServerApp (1)" type="Application" />
+    <toRun name="ServerApp (2)" type="Application" />
+    <toRun name="ServerApp (3)" type="Application" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Passive Replication + Mqtt" type="Multirun" separateTabs="false" reuseTabsWithFailures="false" startOneByOne="true" markFailedProcess="true" hideSuccessProcess="false" delayTime="0.0">
+    <runConfiguration name="docker-compose.yaml: Compose Deployment" type="Docker" />
+    <runConfiguration name="Passive Replication" type="Compound" />
+    <method v="2" />
+  </configuration>
+</component>

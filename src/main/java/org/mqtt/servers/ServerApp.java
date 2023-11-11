@@ -1,8 +1,11 @@
-package org.mqtt.echo;
+package org.mqtt.servers;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.mqtt.echo.Echo;
+import org.mqtt.echo.EchoServer;
+import org.mqtt.services.MqttService;
 
 import java.net.MalformedURLException;
 import java.rmi.Naming;

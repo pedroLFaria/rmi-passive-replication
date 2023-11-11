@@ -1,4 +1,4 @@
-package org.mqtt.echo;
+package org.mqtt.services;
 
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;

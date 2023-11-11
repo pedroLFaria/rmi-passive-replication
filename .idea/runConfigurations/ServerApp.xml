@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ServerApp" type="Application" factoryName="Application" folderName="ServerApp" nameIsGenerated="true">
+    <option name="MAIN_CLASS_NAME" value="org.mqtt.servers.ServerApp" />
+    <module name="mqtt-project" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="org.mqtt.servers.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

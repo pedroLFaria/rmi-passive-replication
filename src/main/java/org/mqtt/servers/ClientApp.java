@@ -1,4 +1,6 @@
-package org.mqtt.echo;
+package org.mqtt.servers;
+
+import org.mqtt.echo.Echo;
 
 import java.net.MalformedURLException;
 import java.rmi.Naming;
