@@ -26,15 +26,29 @@ public class ServerApp {
         try {
             System.setProperty("java.rmi.server.hostname","127.0.0.1");
             initiateRegisty();
-            mqttService = new MqttService();
+            String serverName = getServerName(0);
+            mqttService = new MqttService(serverName);
             EchoServer echoServer = new EchoServer(mqttService);
-            String serverName = bindName(echoServer);
+            bindName(echoServer, serverName);
+            if(serverName.contains("Clone")) mqttService.subscribe();
+            mqttService.setMqttCallBack(callback(echoServer));
             if(notMaster(serverName))healthCheckMaster();
             System.out.println("ObjetoServidor esta ativo! Com nome de servidor: "+ serverName);
         } catch (Exception e) {
             System.err.println("Exceção no servidor Echo: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private static String getServerName(int i) throws MalformedURLException, RemoteException {
+        String serverName = i == 0 ? "master" :  String.format("Clone/%d", i);
+        String fullAddress = getFullAddress(serverName);
+        try {
+            Naming.lookup(fullAddress);
+        } catch (NotBoundException e) {
+            return serverName;
+        }
+        return getServerName(++i);
     }
 
     private static boolean notMaster(String serverName) {
@@ -77,30 +91,9 @@ public class ServerApp {
         System.out.println("TODO: Eleger novo servidor Mestre");
     }
 
-    private static String bindName(EchoServer echoServer) throws MalformedURLException, RemoteException {
-        String serverName = "master";
+    private static void bindName(EchoServer echoServer, String serverName) throws MalformedURLException, RemoteException {
         String fullAddress = getFullAddress(serverName);
-        try {
-            Naming.lookup(fullAddress);
-        } catch (NotBoundException e) {
-            Naming.rebind(fullAddress, echoServer);
-            return fullAddress;
-        }
-        return bindClone(echoServer, 0);
-    }
-
-    private static String bindClone(EchoServer echoServer, int i) throws MalformedURLException, RemoteException {
-        String serverName = String.format("Clone/%d", i);
-        String fullAddress = getFullAddress(serverName);
-        try {
-            Naming.lookup(fullAddress);
-        } catch (NotBoundException e) {
-            Naming.rebind(fullAddress, echoServer);
-            return fullAddress;
-        }
-        mqttService.subscribe();
-        mqttService.setMqttCallBack(callback(echoServer));
-        return bindClone(echoServer, i + 1);
+        Naming.rebind(fullAddress, echoServer);
     }
 
     private static String getFullAddress(String serverName){

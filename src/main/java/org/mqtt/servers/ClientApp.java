@@ -19,7 +19,7 @@ public class ClientApp {
                 if(i%5==0){
                     System.out.println(remoteEcho.getListOfMsg());
                 }
-                Thread.sleep(15000);
+                Thread.sleep(2000);
             }
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);

@@ -11,10 +11,10 @@ public class MqttService {
     public static String publisherId = "mqtt-publisher";
     private final MqttClient mqttPublisher;
 
-    public MqttService(){
+    public MqttService(String clientId){
         try {
             MemoryPersistence persistence = new MemoryPersistence();
-            mqttPublisher = new MqttClient(broker, publisherId, persistence);
+            mqttPublisher = new MqttClient(broker, clientId, persistence);
             MqttConnectOptions connOpts = new MqttConnectOptions();
             connOpts.setCleanSession(true);
             connOpts.setAutomaticReconnect(true);
@@ -33,7 +33,9 @@ public class MqttService {
 
     public void subscribe(String topic){
         try {
+            System.out.println("Subscribing to topic " + topic);
             mqttPublisher.subscribe(topic);
+            System.out.println("Subscribded");
         } catch (MqttException e) {
             throw new RuntimeException(e);
         }
@@ -46,7 +48,9 @@ public class MqttService {
         try {
             var mqttMessage = new MqttMessage(message.getBytes());
             mqttMessage.setQos(qos);
+            System.out.println("Publishing message to topic " + topic + " :" + message);
             mqttPublisher.publish(topic, mqttMessage);
+            System.out.println("Published");
         } catch (MqttException e) {
             throw new RuntimeException(e);
         }
