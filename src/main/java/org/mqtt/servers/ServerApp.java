@@ -5,6 +5,7 @@ import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.mqtt.echo.Echo;
 import org.mqtt.echo.EchoServer;
+import org.mqtt.echo.ServerTypeEnum;
 import org.mqtt.services.MqttService;
 
 import java.net.MalformedURLException;
@@ -20,85 +21,124 @@ public class ServerApp {
     static String host = "//localhost";
     static String port = "8088";
     static String serviceName = "EchoServer";
-    static private MqttService mqttService;
+    static MqttService mqttService;
+    static ServerTypeEnum serverType;
+    static int cloneId = 0;
 
     public static void main(String[] args) {
         try {
+            if(initiateRegistry()) return;
             System.setProperty("java.rmi.server.hostname","127.0.0.1");
-            initiateRegisty();
-            String serverName = getServerName(0);
-            mqttService = new MqttService(serverName);
+            setServerName();
+            mqttService = new MqttService(getServerName());
             EchoServer echoServer = new EchoServer(mqttService);
-            bindName(echoServer, serverName);
-            if(serverName.contains("Clone")) mqttService.subscribe();
+            bindName(echoServer);
+            if(ServerTypeEnum.CLONE.equals(serverType)) mqttService.subscribe();
             mqttService.setMqttCallBack(callback(echoServer));
-            if(notMaster(serverName))healthCheckMaster();
-            System.out.println("ObjetoServidor esta ativo! Com nome de servidor: "+ serverName);
+            if(ServerTypeEnum.CLONE.equals(serverType))healthCheckMaster(echoServer);
+            System.out.println("ObjetoServidor esta ativo! Com nome de servidor: "+ getServerName());
         } catch (Exception e) {
             System.err.println("Exceção no servidor Echo: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    private static String getServerName(int i) throws MalformedURLException, RemoteException {
-        String serverName = i == 0 ? "master" :  String.format("Clone/%d", i);
-        String fullAddress = getFullAddress(serverName);
+    private static String getServerName() {
+        return ServerTypeEnum.MASTER.equals(serverType) ? serverType.toString() : String.format("%s/%d", serverType, cloneId);
+    }
+
+    private static void setServerName() throws MalformedURLException, RemoteException {
+        serverType = cloneId == 0 ? ServerTypeEnum.MASTER :  ServerTypeEnum.CLONE;
         try {
-            Naming.lookup(fullAddress);
+            Naming.lookup(getFullAddress());
         } catch (NotBoundException e) {
-            return serverName;
+            return;
         }
-        return getServerName(++i);
+        cloneId++;
+        setServerName();
     }
 
-    private static boolean notMaster(String serverName) {
-        return !serverName.equals("//localhost:8088/EchoServer/master");
-    }
-
-    private static void initiateRegisty(){
+    private static boolean initiateRegistry(){
         try {
             LocateRegistry.createRegistry(8088);
+            serverType = ServerTypeEnum.REGISTRY;
+            System.out.println("Executando a Registry!");
         } catch (ExportException e) {
             System.out.println("Registry já iniciado!");
+            return false;
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
+        return true;
     }
 
 
-    private static void healthCheckMaster() throws RemoteException {
+    private static void healthCheckMaster(EchoServer echoServer) {
         var executor = Executors.newSingleThreadScheduledExecutor();
         executor.schedule(() -> {
             try {
-                Echo objetoRemoto = (Echo) Naming.lookup(":/master");
+                Echo objetoRemoto = (Echo) Naming.lookup(getMasterAddress());
                 while(true) {
                     objetoRemoto.healthCheck();
-                    Thread.sleep(6000);
+                    Thread.sleep(2000);
                     System.out.println("Server Master still alive!");
                 }
             } catch (RemoteException e) {
-                electeNewMaster();
+                electNewMaster(echoServer);
             } catch (MalformedURLException | NotBoundException e) {
                 throw new RuntimeException(e);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-        }, 10, TimeUnit.SECONDS);
-
+        }, 2, TimeUnit.SECONDS);
     }
 
-    private static void electeNewMaster() {
-        System.out.println("TODO: Eleger novo servidor Mestre");
+    private static void electNewMaster(EchoServer echoServer) {
+        try {
+            System.out.println("Electing the NEW MASTER!");
+            if(shouldBeNewMaster()){
+                System.out.println("I am the NEW MASTER!");
+                serverType = ServerTypeEnum.MASTER;
+                bindName(echoServer);
+            }
+        } catch (MalformedURLException | RemoteException e) {
+            System.out.println("I wasn't able to be the NEW MASTER!");
+            throw new RuntimeException(e);
+        }
     }
 
-    private static void bindName(EchoServer echoServer, String serverName) throws MalformedURLException, RemoteException {
-        String fullAddress = getFullAddress(serverName);
+    private static boolean shouldBeNewMaster() throws MalformedURLException, RemoteException {
+        int nextCloneId = 1;
+        while(cloneId > nextCloneId){
+            try {
+                Naming.lookup(getCloneFullAddress(nextCloneId));
+            } catch (NotBoundException e) {
+                nextCloneId++;
+            }
+        }
+        return cloneId == nextCloneId;
+    }
+
+    private static void bindName(EchoServer echoServer) throws MalformedURLException, RemoteException {
+        String fullAddress = getFullAddress();
         Naming.rebind(fullAddress, echoServer);
     }
 
-    private static String getFullAddress(String serverName){
-        return String.format("%s:%s/%s/%s", host, port, serviceName, serverName);
+    private static String getFullAddress(){
+        if(serverType.equals(ServerTypeEnum.MASTER)){
+            return getMasterAddress();
+        }
+        return getCloneFullAddress(cloneId);
     }
+
+    private static String getMasterAddress() {
+        return String.format("%s:%s/%s/%s", host, port, serviceName, ServerTypeEnum.MASTER);
+    }
+
+    private static String getCloneFullAddress(int cloneId) {
+        return String.format("%s:%s/%s/%s/%d", host, port, serviceName, serverType, cloneId);
+    }
+
     private static MqttCallback callback(EchoServer echoServer){
         return new MqttCallback(){
 

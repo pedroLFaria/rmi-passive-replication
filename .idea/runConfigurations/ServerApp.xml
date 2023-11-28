@@ -2,6 +2,7 @@
   <configuration default="false" name="ServerApp" type="Application" factoryName="Application" folderName="ServerApp" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="org.mqtt.servers.ServerApp" />
     <module name="mqtt-project" />
+    <option name="VM_PARAMETERS" value="-Djava.rmi.server.hostname=127.0.0.1" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="org.mqtt.servers.*" />

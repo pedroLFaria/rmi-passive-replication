@@ -4,6 +4,7 @@
     <toRun name="ServerApp (1)" type="Application" />
     <toRun name="ServerApp (2)" type="Application" />
     <toRun name="ServerApp (3)" type="Application" />
+    <toRun name="ServerApp (4)" type="Application" />
     <method v="2" />
   </configuration>
 </component>

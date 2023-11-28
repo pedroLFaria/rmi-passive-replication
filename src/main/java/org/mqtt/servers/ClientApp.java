@@ -2,14 +2,21 @@ package org.mqtt.servers;
 
 import org.mqtt.echo.Echo;
 
-import java.net.MalformedURLException;
 import java.rmi.Naming;
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
 
 public class ClientApp {
     public static void main(String[] args) {
+        try {
+            run(0);
+        } catch (InterruptedException e) {
+            System.out.println(e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void run(int tries) throws InterruptedException {
         Echo remoteEcho;
+
         try {
             remoteEcho = (Echo) Naming.lookup("//localhost:8088/EchoServer/master");
             int i = 0;
@@ -19,16 +26,17 @@ public class ClientApp {
                 if(i%5==0){
                     System.out.println(remoteEcho.getListOfMsg());
                 }
-                Thread.sleep(2000);
+                tries = 0;
+                Thread.sleep(5000);
             }
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        } catch (NotBoundException e) {
-            throw new RuntimeException(e);
-        } catch (RemoteException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            tries++;
+            while(tries < 5){
+                Thread.sleep(5000);
+                run(tries);
+                return;
+            }
+            throw new RuntimeException();
         }
     }
 }
