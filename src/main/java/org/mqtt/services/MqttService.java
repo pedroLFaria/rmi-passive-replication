@@ -44,13 +44,29 @@ public class MqttService {
         subscribe(topic);
     }
 
-    public void subscribe(String topic) {
+    public void subscribe(String topic) throws MqttException {
         try {
             System.out.println("Subscribing to topic " + topic);
             mqttPublisher.subscribe(topic);
-            System.out.println("Subscribded");
+            System.out.println("Subscribed");
         } catch (MqttException e) {
-            throw new RuntimeException(e);
+            System.out.println("Failure in subscribing to topic " + topic);
+            throw new MqttException(e);
+        }
+    }
+
+    public void unsubscribe() throws MqttException{
+        unsubscribe(topic);
+    }
+
+    public void unsubscribe(String topic) throws MqttException {
+        try {
+            System.out.println("Unsubscribing to topic " + topic);
+            mqttPublisher.unsubscribe(topic);
+            System.out.println("Unsubscribed");
+        } catch (MqttException e) {
+            System.out.println("Failure in Unsubscribing to topic " + topic);
+            throw new MqttException(e);
         }
     }
 

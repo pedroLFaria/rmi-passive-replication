@@ -8,14 +8,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EchoServer extends UnicastRemoteObject implements Echo {
+
     private List<String> messages = new ArrayList<>();
-    private MqttService mqttService;
+    private final MqttService mqttService;
+
     public EchoServer(MqttService mqttService) throws RemoteException {
         super();
         this.mqttService = mqttService;
     }
 
-    public void addMessage(String message){
+    public void addMessage(String message) {
         messages.add(message);
     }
 
@@ -28,14 +30,15 @@ public class EchoServer extends UnicastRemoteObject implements Echo {
 
     @Override
     public List<String> getListOfMsg() throws RemoteException {
-        return new ArrayList<>(messages);
+        return messages;
+    }
+
+    public void setMessages(List<String> messages) {
+        this.messages = messages;
     }
 
     @Override
     public void healthCheck() throws RemoteException {
     }
-
-
-
 
 }

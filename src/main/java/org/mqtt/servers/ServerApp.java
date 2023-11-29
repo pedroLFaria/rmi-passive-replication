@@ -2,6 +2,7 @@ package org.mqtt.servers;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.mqtt.echo.Echo;
 import org.mqtt.echo.EchoServer;
@@ -27,20 +28,38 @@ public class ServerApp {
 
     public static void main(String[] args) {
         try {
-            if(initiateRegistry()) return;
-            System.setProperty("java.rmi.server.hostname","127.0.0.1");
-            setServerName();
-            mqttService = new MqttService(getServerName());
-            EchoServer echoServer = new EchoServer(mqttService);
+            setSystemProperty();
+
+            choseServerType();
+            if(serverType.equals(ServerTypeEnum.REGISTRY)) while(true);
+
+            EchoServer echoServer = getEchoServer();
             bindName(echoServer);
-            if(ServerTypeEnum.CLONE.equals(serverType)) mqttService.subscribe();
-            mqttService.setMqttCallBack(callback(echoServer));
-            if(ServerTypeEnum.CLONE.equals(serverType))healthCheckMaster(echoServer);
+
+            if(serverType.equals(ServerTypeEnum.CLONE)) {
+                mqttService.subscribe();
+                mqttService.setMqttCallBack(callback(echoServer));
+                initiateCommunicationWithMaster(echoServer);
+            }
             System.out.println("ObjetoServidor esta ativo! Com nome de servidor: "+ getServerName());
         } catch (Exception e) {
             System.err.println("Exceção no servidor Echo: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private static EchoServer getEchoServer() throws RemoteException {
+        mqttService = new MqttService(getServerName());
+        return new EchoServer(mqttService);
+    }
+
+    private static void setSystemProperty() {
+        System.setProperty("java.rmi.server.hostname","127.0.0.1");
+    }
+
+    private static void choseServerType() throws MalformedURLException, RemoteException {
+        if(initiateRegistry()) return;
+        setServerName();
     }
 
     private static String getServerName() {
@@ -62,57 +81,80 @@ public class ServerApp {
         try {
             LocateRegistry.createRegistry(8088);
             serverType = ServerTypeEnum.REGISTRY;
-            System.out.println("Executando a Registry!");
+            System.out.printf("Executando a Registry na porta %d!\n", 8080);
         } catch (ExportException e) {
             System.out.println("Registry já iniciado!");
             return false;
         } catch (RemoteException e) {
+            System.out.println("Falha ao iniciar a Registry: " + e.getMessage());
             throw new RuntimeException(e);
         }
         return true;
     }
 
 
-    private static void healthCheckMaster(EchoServer echoServer) {
+    private static void initiateCommunicationWithMaster(EchoServer echoServer) throws MalformedURLException, NotBoundException, RemoteException {
+        Echo remoteEchoMaster = (Echo) Naming.lookup(getMasterAddress());
+        echoServer.setMessages(remoteEchoMaster.getListOfMsg());
         var executor = Executors.newSingleThreadScheduledExecutor();
         executor.schedule(() -> {
             try {
-                Echo objetoRemoto = (Echo) Naming.lookup(getMasterAddress());
-                while(true) {
-                    objetoRemoto.healthCheck();
-                    Thread.sleep(2000);
-                    System.out.println("Server Master still alive!");
-                }
-            } catch (RemoteException e) {
-                electNewMaster(echoServer);
-            } catch (MalformedURLException | NotBoundException e) {
-                throw new RuntimeException(e);
+                healthCheckLoop(echoServer, remoteEchoMaster);
             } catch (InterruptedException e) {
+                System.out.println("Failure when dealing with threads: " + e.getMessage());
                 throw new RuntimeException(e);
             }
         }, 2, TimeUnit.SECONDS);
     }
 
-    private static void electNewMaster(EchoServer echoServer) {
+    private static void healthCheckLoop(EchoServer echoServer, Echo remoteEchoMaster) throws InterruptedException {
+        try {
+            while(true) {
+                remoteEchoMaster.healthCheck();
+                System.out.println("Server Master still alive!");
+                Thread.sleep(2000);
+            }
+        } catch (RemoteException e) {
+            electNewMaster(echoServer, 0);
+        }  catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void electNewMaster(EchoServer echoServer,int numberOfTries) throws InterruptedException {
         try {
             System.out.println("Electing the NEW MASTER!");
             if(shouldBeNewMaster()){
                 System.out.println("I am the NEW MASTER!");
                 serverType = ServerTypeEnum.MASTER;
                 bindName(echoServer);
+                mqttService.unsubscribe();
+            } else {
+                Echo newEchoMaster = (Echo) Naming.lookup(getMasterAddress());
+                healthCheckLoop(echoServer, newEchoMaster);
             }
-        } catch (MalformedURLException | RemoteException e) {
-            System.out.println("I wasn't able to be the NEW MASTER!");
+        } catch (MalformedURLException | RemoteException | MqttException e) {
+            System.out.println("I wasn't able to be the NEW MASTER: " + e.getMessage());
             throw new RuntimeException(e);
+        } catch (NotBoundException e) {
+            if(numberOfTries < 5) {
+                System.out.println("Failure to find NEW MASTER, retrying: " + numberOfTries);
+                Thread.sleep(1500);
+                electNewMaster(echoServer, ++numberOfTries);
+            } else {
+                System.out.println("Total failure during election time: " + e.getMessage());
+                throw new RuntimeException(e);
+            }
         }
     }
 
-    private static boolean shouldBeNewMaster() throws MalformedURLException, RemoteException {
+    private static boolean shouldBeNewMaster() throws MalformedURLException {
         int nextCloneId = 1;
         while(cloneId > nextCloneId){
             try {
-                Naming.lookup(getCloneFullAddress(nextCloneId));
-            } catch (NotBoundException e) {
+                Echo cloneServer = (Echo) Naming.lookup(getCloneFullAddress(nextCloneId));
+                cloneServer.healthCheck();
+            } catch (NotBoundException | RemoteException e) {
                 nextCloneId++;
             }
         }

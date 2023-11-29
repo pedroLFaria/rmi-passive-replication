@@ -3,7 +3,6 @@
     <runConfiguration name="ClientApp" type="Application" />
     <runConfiguration name="Passive Replication" type="Compound" />
     <runConfiguration name="docker-compose.yaml: Compose Deployment" type="Docker" />
-    <runConfiguration name="Registry" type="Shell Script" />
     <method v="2" />
   </configuration>
 </component>

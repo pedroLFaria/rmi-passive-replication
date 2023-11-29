@@ -1,50 +1,63 @@
-# MQTT Basics
+# RMI Passive Replication Project Documentation
 
-This project is intended to show the basic usage of Mosquitto, 
-an Eclipse Message Broker, through Docker and Java.
+This document provides a comprehensive guide to the implementation of a passive replication system using Remote Method Invocation (RMI) and Mosquitto. The project demonstrates the basic application of RMI combined with Mosquitto for achieving passive replication.
 
+## System Requirements
 
-## Installation
+For the successful execution of this project, the following prerequisites must be met:
 
-These are some of the tools you're going to need in order to run this project:
+- **Maven:** Essential for building and managing the project.
+- **Java Version:** The project is compatible with Java 11.
+- **MQTT Service or Docker:** An active MQTT service is required. This can be achieved either by running the service independently or using Docker Compose for containerization.
 
-```
-  maven
-  docker
-  java 11
-  docker-compose (or docker compose)
-```
-    
+It is important to ensure that the MQTT service is operational before proceeding with project deployment.
 
-## Usage
+## Installation and Deployment Instructions
 
-This command will run the mqtt-broker + mqtt-sub + mqtt-pub. 
-The terminal will be attached with the docker compose logs, 
-and mqtt-sub will log every message that comes into mqtt-topic.   
-```
+### Docker Utilization
+
+If Docker is preferred for deployment, the following commands should be executed:
+
+```bash
 docker compose up --build
+docker compose run mqtt-pub sh -c "mosquitto_pub -h mqtt-broker -t mqtt-topic"
 ```
-After that, you might want to see everything working. 
-Just run this command in another terminal to publish a message into mqtt-topic defined into docker-compose.yaml.
+
+These commands build and deploy the necessary Docker containers for the MQTT service.
+
+### Project Build
+
+The project can be built using Maven with the command:
+
+```bash
+mvn clean package
 ```
-docker compose run mqtt-pub sh -c "mosquitto_pub -h mqtt-broker -t mqtt-topic -m 'Hello World'"
+
+### Server Initialization
+
+After building the project, the servers can be initiated be running the following command repetitive:
+```bash
+   java -cp target/mqtt-project-1.0-SNAPSHOT.jar org/mqtt/servers/ServerApp
+   ```
+1. **Registry Service:** The first server initiated serves as the Registry service on port 8088.   
+
+2. **Master Server:** The second server initiated functions as the Master server.
+
+3. **Clone Servers:** Subsequent server instances will act as Clones, denoted as Clones/{i}, where 'i' represents the iteration number.
+
+Additionally, a Registry service can be manually initiated by executing `rmiregistry 8088` in the `target/classes` directory. The system is designed to automatically detect the Registry operating on the specified port and function accordingly.
+
+### Client Application Execution
+
+To simulate client requests to the services, execute the following command:
+
+```bash
+java -cp target/mqtt-project-1.0-SNAPSHOT.jar org/mqtt/servers/ClientApp
 ```
-It basically runs a container with the command inside the commas.
-You should see the message "Hello World" in the terminal where you ran the first docker compose command.
 
-To publish a message into mqtt-topic from this Java project, you just have to open it inside your IDE, 
-run maven dependencies and then run the project.
+This command activates the command-line client interface for interacting with the services.
 
-
-## Support
-
-If you have any questions, feel free to email me at cristianeduardo.dev@gmail.com.
-
-
-## Contributions
-
-If you have any contributions to make, feel free to open an issue or PR.
-
+---
 
 ## References
 
